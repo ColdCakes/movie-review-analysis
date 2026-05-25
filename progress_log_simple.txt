@@ -422,71 +422,37 @@ After all of that — it finally worked.
 COMMANDS TO RUN THE PROJECT
 --------------------------------------------------------------------------------
 All of these are typed into the terminal inside VS Code.
-The first thing you should always do is navigate to the project folder:
-
-  cd "C:\Users\rokin\OneDrive\Documents\sentiment-project"
-
-After running that, you don't need to type the full path for the other commands.
-
----
+Navigate to the project folder first, then use these commands:
 
 Install the required tools (only needs to be done once):
+  pip install -r requirements.txt
 
-  pip install -r "C:\Users\rokin\OneDrive\Documents\sentiment-project\requirements.txt"
-
----
-
-Test that the data loading works (downloads 150 reviews as a quick check):
-
+Test that the data loading works:
   python -c "from src.data import load_imdb; load_imdb(max_train=100, max_test=50)"
 
----
-
 Test that the model builds without errors:
-
   python -c "from src.model import build_pipeline; p = build_pipeline(); print(p)"
 
----
-
 Test that the results reporting works using made up numbers:
-
   python -c "from src.evaluate import print_report; print_report([0,1,0,1], [0,1,1,1])"
 
----
-
 Quick test run on a small number of reviews (finishes in seconds):
-
-  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --max-train 2000 --max-test 500
-
----
+  python main.py --max-train 2000 --max-test 500
 
 Full training run on all 50,000 reviews (takes a few minutes):
+  python main.py
 
-  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py"
+Test your own review after training:
+  python main.py --predict "type your review here"
 
----
+Use the alternative brain (SVM) instead of the default:
+  python main.py --clf svm
 
-Test your own review after training (replace the text inside the quotes with your own):
+See statistics from the saved model without retraining (instant):
+  python main.py --stats
 
-  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --predict "type your review here"
-
----
-
-Run using the alternative brain (SVM) instead of the default one:
-
-  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --clf svm
-
----
-
----
-
-See the statistics from the saved model without retraining (instant):
-
-  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --stats
-
-See the statistics on a smaller number of reviews (even faster):
-
-  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --stats --max-test 500
+See statistics on a smaller number of reviews (even faster):
+  python main.py --stats --max-test 500
 
 The statistics it shows are:
   - Accuracy        : the percentage of reviews it got right overall
@@ -495,16 +461,8 @@ The statistics it shows are:
   - Confusion Matrix: a table showing correct vs incorrect predictions
   - Top words       : the words that pushed hardest toward positive or negative
 
----
-
-NOTE: Once you have run the cd command at the top, you can shorten
-the main.py commands to just:
-
-  python main.py
-  python main.py --predict "type your review here"
-  python main.py --clf svm
-  python main.py --stats
-  python main.py --stats --max-test 500
+NOTE: Full path commands for this specific computer are saved in
+my_commands.txt (not on GitHub).
 
 ================================================================================
   END OF LOG
