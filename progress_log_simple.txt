@@ -319,6 +319,106 @@ even though the reviewer clearly hated it. That kind of nuance requires
 much more advanced techniques.
 
 --------------------------------------------------------------------------------
+STEP 8 — Adding a Way to See Statistics Without Retraining
+--------------------------------------------------------------------------------
+I added a new option called --stats to the program. Before this, the only
+way to see the accuracy and results was to retrain the whole model from
+scratch, which takes a few minutes. Now I can pull up the statistics
+instantly at any time using the saved model file.
+
+How it works:
+  It loads the saved model.pkl file, grabs the test reviews, runs them
+  through the model, and prints out all the same results — accuracy,
+  the breakdown table, and the top positive and negative words.
+
+
+--------------------------------------------------------------------------------
+STEP 9 — Improving the Accuracy
+--------------------------------------------------------------------------------
+I tested a few changes to try to push the accuracy above 90.32%:
+
+  Change 1: Doubled the vocabulary size from 50,000 words to 100,000
+    Giving the program more words to work with means it has more signals
+    to make decisions from.
+
+  Change 2: Added three-word phrases on top of two-word phrases
+    For example "not that good" is now treated as one single unit rather
+    than three separate words.
+
+  I tested both changes with the default brain (Logistic Regression) and
+  the alternative brain (SVM) to see which did better.
+
+  Results:
+    Original settings                        → 90.32%
+    New settings with Logistic Regression    → 90.58%  (winner)
+    New settings with SVM                    → 90.14%  (worse)
+
+  The default brain won so I kept that and saved the improved model.
+
+
+--------------------------------------------------------------------------------
+STEP 10 — Adding a README and Citation
+--------------------------------------------------------------------------------
+Since I was about to share the project publicly on GitHub, I created a
+README file. On GitHub, the README is the first thing people see when
+they visit your project page — it's basically a cover page that explains
+what the project is and how to use it.
+
+I included:
+  - A plain English description of what the project does
+  - Step by step instructions for anyone who wants to run it
+  - A credit and link back to Stanford University who created the dataset
+  - The full official citation for the dataset
+
+I also created a .gitignore file. This is a list that tells GitHub which
+files to ignore and NOT upload. Things like the trained model file (too
+large), secret API keys, and auto-generated junk files that nobody needs.
+
+
+--------------------------------------------------------------------------------
+STEP 11 — Uploading to GitHub
+--------------------------------------------------------------------------------
+I uploaded the project to GitHub so anyone can find and use it at:
+  github.com/ColdCakes/movie-review-analysis
+
+This was the most frustrating part of the whole project. Here's everything
+that went wrong and how I fixed it:
+
+  Problem 1: Forgot to initialise Git first
+    Git needs to be set up inside the folder before you can do anything
+    else with it. I accidentally skipped this step and got an error.
+    Fix: ran git init before any other commands.
+
+  Problem 2: Only the README ended up on GitHub
+    The first push only uploaded the README because I hadn't told Git
+    to include the other files yet.
+    Fix: ran git add . to tell Git to include everything, then committed.
+
+  Problem 3: GitHub blocked the upload because of a secret API key
+    I have another project in a nearby folder called rag_chatbot that
+    contains a file with a private API key in it. When I told Git to
+    include everything, it accidentally swept up that file too.
+    GitHub's security system spotted the key and blocked the upload to
+    protect me — if that key went public anyone could use it.
+    Fix: disabled the API key so it was no longer usable, added the
+    folder to the ignore list, removed it from Git, then visited the
+    GitHub security page to tell it the key had been dealt with.
+
+  Problem 4: The branch had the wrong name
+    Git named my local copy "master" but GitHub expected it to be called
+    "main". This mismatch caused the upload to fail.
+    Fix: renamed the branch to "main" with one command.
+
+  Problem 5: Wrong command for the wrong terminal
+    One of the commands I used to delete a folder only works in the
+    old Windows Command Prompt, not in PowerShell which is what VS Code
+    uses by default. Got an error that made no sense at first.
+    Fix: used the PowerShell version of the same command instead.
+
+After all of that — it finally worked.
+
+
+--------------------------------------------------------------------------------
 COMMANDS TO RUN THE PROJECT
 --------------------------------------------------------------------------------
 All of these are typed into the terminal inside VS Code.
