@@ -1,0 +1,178 @@
+================================================================================
+  SENTIMENT ANALYSIS PROJECT — PROGRESS LOG
+  Date: 2026-05-22
+  Dataset: Stanford IMDB (50,000 movie reviews)
+  Goal: Classify reviews as POSITIVE or NEGATIVE using TF-IDF + scikit-learn
+================================================================================
+
+
+--------------------------------------------------------------------------------
+STEP 1 — Project Setup
+--------------------------------------------------------------------------------
+Created the folder structure:
+
+    sentiment-project/
+    ├── main.py             <- entry point / CLI
+    ├── requirements.txt    <- dependencies
+    └── src/
+        ├── __init__.py
+        ├── data.py         <- data loading and cleaning
+        ├── model.py        <- TF-IDF + classifier pipeline
+        └── evaluate.py     <- metrics and reporting
+
+Defined the dependencies in requirements.txt:
+  - scikit-learn   : the machine learning library (TF-IDF, Logistic Regression, metrics)
+  - datasets       : HuggingFace library to download the IMDB dataset automatically
+  - numpy          : array math
+  - pandas         : not heavily used here but useful for future tabular work
+
+
+--------------------------------------------------------------------------------
+STEP 2 — Loading the Data (src/data.py)
+--------------------------------------------------------------------------------
+Used the HuggingFace `datasets` library to download the Stanford IMDB dataset.
+The dataset contains:
+  - 25,000 training reviews (labeled positive or negative)
+  - 25,000 test reviews (labeled positive or negative)
+  - 50,000 unlabeled reviews (not used here)
+
+Each review is raw HTML-ish text from IMDB. We clean it with a function
+called clean_text() that does three things:
+  1. Strips HTML tags  (e.g. <br /> appears a lot in this dataset)
+  2. Removes anything that isn't a letter or space
+  3. Lowercases and collapses extra whitespace
+
+Example before cleaning:
+  "This movie was <br />great! 10/10 would watch again."
+
+Example after cleaning:
+  "this movie was great would watch again"
+
+We also added a _balanced_select() helper for when the user caps the number
+of samples (e.g. --max-train 2000). The IMDB dataset stores all negatives
+first, so naively taking the first 2000 would give only negative reviews.
+The helper takes half from each class so the model always sees both labels.
+
+
+--------------------------------------------------------------------------------
+STEP 3 — Building the Pipeline (src/model.py)
+--------------------------------------------------------------------------------
+Used scikit-learn's Pipeline to chain two steps together:
+
+  [TfidfVectorizer]  →  [LogisticRegression]
+
+--- TF-IDF Vectorizer ---
+TF-IDF stands for Term Frequency–Inverse Document Frequency.
+It converts a text document into a vector of numbers.
+
+  - Term Frequency (TF): how often a word appears in THIS review
+  - Inverse Document Frequency (IDF): how rare the word is across ALL reviews
+
+A word like "the" appears in every review, so its IDF score is near zero
+and it gets drowned out. A word like "masterpiece" is rare, so when it
+appears it carries a lot of weight.
+
+Settings we used:
+  max_features=50,000   : only keep the 50k most common words/phrases
+  ngram_range=(1, 2)    : include single words AND two-word phrases
+                          (bigrams like "not good" or "must see")
+  sublinear_tf=True     : replace raw count with 1 + log(count)
+                          so a word appearing 100x isn't 100x more important
+                          than one appearing 10x
+  min_df=2              : ignore words that appear in fewer than 2 reviews
+                          (typos, rare proper nouns)
+
+--- Logistic Regression ---
+Logistic Regression learns a weight (coefficient) for every TF-IDF feature.
+Positive weights push the prediction toward POSITIVE sentiment.
+Negative weights push toward NEGATIVE sentiment.
+
+At prediction time it computes:
+  score = sum(weight[i] * tfidf_value[i] for all features)
+  probability = sigmoid(score)
+  label = POSITIVE if probability > 0.5 else NEGATIVE
+
+We also support LinearSVC as an alternative (--clf svm flag), which uses
+a different math approach but works similarly.
+
+
+--------------------------------------------------------------------------------
+STEP 4 — Evaluation (src/evaluate.py)
+--------------------------------------------------------------------------------
+After training, we ran predictions on the held-out test set and reported:
+
+  Accuracy          : what fraction of reviews were labeled correctly
+  Precision         : of all reviews predicted POSITIVE, how many truly were?
+  Recall            : of all truly POSITIVE reviews, how many did we catch?
+  F1-score          : harmonic mean of precision and recall
+  Confusion Matrix  : a 2x2 table showing correct vs. incorrect predictions
+
+We also printed the top 20 highest-weight and lowest-weight TF-IDF features
+so we can see exactly what words the model learned to associate with each
+sentiment. This is a good sanity check.
+
+
+--------------------------------------------------------------------------------
+STEP 5 — CLI Entry Point (main.py)
+--------------------------------------------------------------------------------
+Wired everything together in main.py with an argparse CLI.
+
+Supported commands:
+  python main.py                         full training + evaluation
+  python main.py --clf svm               use LinearSVC instead of LogReg
+  python main.py --max-train 2000        cap training set (quick smoke-test)
+  python main.py --predict "some text"   classify a new review using saved model
+
+The trained model is serialized with pickle and saved to model.pkl so it
+can be reloaded for inference without retraining.
+
+
+--------------------------------------------------------------------------------
+STEP 6 — Debugging & Fixes
+--------------------------------------------------------------------------------
+Two bugs came up during the first runs:
+
+  Bug 1: Dataset path changed
+    The datasets library used to accept just "imdb" but the dataset was
+    moved to "stanfordnlp/imdb" on HuggingFace Hub.
+    Fix: updated the path in src/data.py.
+
+  Bug 2: Only one class in training data
+    When capping at 2000 samples without balancing, all examples were
+    class 0 (negative) because the dataset is sorted by label.
+    Logistic Regression crashed since it needs both classes to train.
+    Fix: added _balanced_select() to pick equal numbers from each class.
+
+  Warning (not a bug): n_jobs deprecation
+    LogisticRegression's n_jobs parameter was deprecated in sklearn 1.8.
+    Fix: removed it since it had no effect anyway.
+
+
+--------------------------------------------------------------------------------
+FINAL RESULTS
+--------------------------------------------------------------------------------
+Training samples : 25,000
+Test samples     : 25,000
+Classifier       : Logistic Regression (C=5.0)
+Vectorizer       : TF-IDF (unigrams + bigrams, 50k features)
+
+  Accuracy  : 90.32%
+
+  Class       Precision   Recall    F1
+  Negative    0.90        0.90      0.90
+  Positive    0.90        0.90      0.90
+
+Top positive words  : great, excellent, perfect, wonderful, amazing, superb
+Top negative words  : worst, bad, awful, boring, waste, poor, terrible
+
+The model is well-balanced across both classes.
+It reaches 90% without any neural networks or embeddings — purely from
+word/phrase frequency statistics.
+
+Known limitation: the model struggles with sarcasm or negation in long
+sentences, e.g. "Oh wow, what a GREAT waste of two hours" would likely
+be misclassified as positive due to the word "great".
+
+================================================================================
+  END OF LOG
+================================================================================

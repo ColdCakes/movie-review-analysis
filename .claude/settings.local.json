@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python main.py --max-train 2000 --max-test 500)",
+      "Bash(python main.py --predict \"The acting was superb and the plot kept me on the edge of my seat the whole time!\")",
+      "Bash(python main.py --predict \"Terrible movie, complete waste of time. The plot made no sense whatsoever.\")",
+      "Bash(python main.py)",
+      "Bash(python main.py --stats --max-test 500)"
+    ]
+  }
+}

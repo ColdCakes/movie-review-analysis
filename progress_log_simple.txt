@@ -1,0 +1,411 @@
+================================================================================
+  WHAT I BUILT AND HOW I BUILT IT — PLAIN ENGLISH VERSION
+================================================================================
+
+This document explains every single step I took to build this project,
+written so that anyone can follow along — no coding or tech experience needed.
+
+
+--------------------------------------------------------------------------------
+THE GOAL
+--------------------------------------------------------------------------------
+I wanted to build a program that can read a movie review written by a person
+and automatically decide whether that review is positive or negative.
+
+For example:
+  "I loved this film, the acting was brilliant!"  →  POSITIVE
+  "Terrible movie, total waste of time."          →  NEGATIVE
+
+The program learns how to do this by studying thousands of reviews that have
+already been labeled by humans, and finding patterns in the words people use.
+
+
+--------------------------------------------------------------------------------
+STEP 1 — Creating the Project Folder
+--------------------------------------------------------------------------------
+Before writing any code, I organised a folder on the computer to keep
+everything tidy. Think of it like setting up a physical workspace before
+starting a project — you want your tools and materials in the right places
+before you begin.
+
+I created a main folder called "sentiment-project" and inside it I made
+a sub-folder called "src" (short for "source"), which is where the core
+logic of the program lives.
+
+The layout ended up looking like this:
+
+    sentiment-project/
+    ├── main.py             <- the file you run to start everything
+    ├── requirements.txt    <- a shopping list of tools the program needs
+    └── src/
+        ├── data.py         <- handles getting and cleaning the reviews
+        ├── model.py        <- the brain that learns to classify reviews
+        └── evaluate.py     <- checks how well the brain is doing
+
+
+--------------------------------------------------------------------------------
+STEP 2 — Writing the Shopping List (requirements.txt)
+--------------------------------------------------------------------------------
+Programming projects almost never start from scratch. Developers rely on
+pre-built tools (called "libraries") that other people have already written.
+Rather than building everything myself, I listed the tools I needed:
+
+  scikit-learn
+    A very popular machine learning library. It contains ready-made
+    versions of the algorithms I use to train and test the model.
+
+  datasets
+    A tool made by a company called HuggingFace. It lets me download
+    famous, well-known datasets (collections of data) with a single
+    line of code rather than finding and downloading files manually.
+
+  numpy
+    A tool for doing fast math on large lists of numbers. The program
+    works with millions of numbers internally, so I needed something
+    faster than basic Python for that.
+
+  pandas
+    A tool for working with tables of data, similar to Excel but in code.
+
+Once the shopping list was written, I ran a command that automatically
+went and installed all of those tools onto the computer.
+
+
+--------------------------------------------------------------------------------
+STEP 3 — Getting the Reviews (src/data.py)
+--------------------------------------------------------------------------------
+I needed a large set of real movie reviews to teach the program from.
+I used a famous dataset called the "Stanford IMDB Dataset."
+
+What is it?
+  A collection of 50,000 real movie reviews scraped from the IMDB website.
+  Each review has already been labeled by a human as either positive (1)
+  or negative (0). This labeling is what lets the program learn — it can
+  study the reviews and their correct answers, then try to figure out the
+  pattern on its own.
+
+  25,000 reviews are used for TRAINING (the program learns from these).
+  25,000 reviews are used for TESTING  (I check the program on these —
+  it has never seen them before, so it's a fair test of what it learned).
+
+Downloading it:
+  I used the HuggingFace "datasets" tool to download it automatically.
+  You just tell it the name of the dataset and it handles the rest.
+
+Cleaning the reviews:
+  The raw reviews from IMDB contain a lot of messy stuff that would
+  confuse the program if I left it in. So before the program reads them,
+  I cleaned each review in three ways:
+
+    1. Removed HTML tags
+       IMDB reviews sometimes contain invisible web-formatting code like
+       "<br />" which just means "new line" in a webpage. That's not a
+       real word, so I stripped all of that out.
+
+    2. Removed punctuation and numbers
+       Punctuation like "!", "?", and "," doesn't really help the program
+       decide if a review is positive or negative. I removed it so the
+       program only deals with actual words.
+
+    3. Lowercased everything
+       "GREAT", "Great", and "great" all mean the same thing. By converting
+       everything to lowercase, I made sure the program treats them as one
+       word instead of three different ones.
+
+  Before cleaning: "This movie was <br />GREAT! 10/10 would watch again."
+  After cleaning:  "this movie was great would watch again"
+
+Fixing a hidden problem:
+  I discovered that in the dataset, all the negative reviews are stored
+  first, followed by all the positive ones. So if I only grabbed the
+  first 2,000 reviews for a quick test, I'd accidentally give the program
+  only negative examples — it would never even see a positive review and
+  couldn't learn properly.
+
+  To fix this, I wrote a small helper that always picks an equal number
+  from each group: half negative, half positive.
+
+
+--------------------------------------------------------------------------------
+STEP 4 — Teaching the Program to Understand Words (src/model.py, Part 1)
+--------------------------------------------------------------------------------
+Computers don't understand words — they only understand numbers.
+So before I could teach the program anything, I needed to convert all the
+reviews into numbers.
+
+The technique I used is called TF-IDF.
+
+What does TF-IDF stand for?
+  Term Frequency — Inverse Document Frequency.
+  That sounds complicated, but the idea is simple.
+
+Here's the core idea with an example:
+
+  Imagine you're reading 1,000 movie reviews.
+  The word "the" appears in every single one of them.
+  The word "masterpiece" appears in only 30 of them.
+
+  If a review contains the word "masterpiece", that's a meaningful signal —
+  it probably means the reviewer really liked the film.
+  But if a review contains the word "the", that tells us absolutely nothing.
+
+  TF-IDF automatically figures this out. It gives high scores to words that
+  appear a lot in ONE review but are rare across ALL reviews. It gives low
+  scores to words that appear everywhere.
+
+What does the output look like?
+  For each review, TF-IDF produces a long list of numbers — one number per
+  word in the entire vocabulary. Most numbers are zero (the word wasn't in
+  that review). A few are non-zero, representing words that DID appear and
+  how significant they were.
+
+  Think of it like a fingerprint — each review gets its own unique pattern
+  of numbers.
+
+Extra detail — bigrams:
+  Single words sometimes lose their meaning without context.
+  "not" is neutral. "good" is positive. But "not good" is negative.
+
+  I told TF-IDF to also look at pairs of words side by side (called
+  bigrams), so "not good", "must see", and "the worst" are treated as
+  single meaningful units rather than two separate unrelated words.
+
+
+--------------------------------------------------------------------------------
+STEP 5 — Teaching the Program to Make Decisions (src/model.py, Part 2)
+--------------------------------------------------------------------------------
+Once each review is a list of numbers, I needed the program to learn
+which patterns mean positive and which mean negative.
+
+The technique I used is called Logistic Regression.
+
+Here's the idea in plain terms:
+
+  Imagine placing reviews on a line, with "very negative" at the left end
+  and "very positive" at the right end. Logistic Regression learns where
+  each review belongs on that line, and draws a dividing line down the
+  middle. Anything to the left is NEGATIVE, anything to the right is POSITIVE.
+
+How does it learn?
+  It goes through all 25,000 training reviews one by one, makes a guess,
+  checks if it was right, and then slightly adjusts its internal settings
+  to do better next time. After going through all the reviews many times,
+  its guesses get better and better.
+
+What does "learned" actually mean?
+  After training, every word in the vocabulary has a score (called a weight).
+  Words with high positive scores push a review toward POSITIVE.
+  Words with high negative scores push a review toward NEGATIVE.
+
+  Words the model gave high positive scores to:
+    great, excellent, perfect, wonderful, amazing, superb, brilliant
+
+  Words the model gave high negative scores to:
+    worst, bad, awful, boring, waste, poor, terrible
+
+  These make intuitive sense — the model learned genuine language patterns,
+  not just random noise.
+
+How does it classify a new review?
+  It takes the TF-IDF number fingerprint of the review, multiplies each
+  number by the word's learned score, adds them all up, and outputs a
+  probability between 0% and 100%. Above 50% = POSITIVE. Below = NEGATIVE.
+
+
+--------------------------------------------------------------------------------
+STEP 6 — Checking How Well It Works (src/evaluate.py)
+--------------------------------------------------------------------------------
+After training, I needed to check if the program actually learned well.
+I did this by running it on the 25,000 test reviews it had never seen before.
+
+The main number is Accuracy:
+  This is simply "what percentage of reviews did it get right?"
+  My model scored 90.32% — meaning it correctly classified about 9 out of
+  every 10 reviews.
+
+I also checked two other things:
+
+  Precision — "When the program says something is positive, how often is it
+               actually positive?"
+               My model: 90% — when it says positive, it's right 9/10 times.
+
+  Recall    — "Of all the truly positive reviews, how many did the program
+               find?"
+               My model: 90% — it catches 9 out of 10 positive reviews.
+
+And I looked at a Confusion Matrix, which is a simple table showing
+exactly where the program got confused:
+
+                  Predicted NEGATIVE   Predicted POSITIVE
+  Truly NEGATIVE       11,279               1,221      <- got these wrong
+  Truly POSITIVE        1,200              11,300      <- got these wrong
+
+  The program mislabeled about 1,200 reviews in each direction.
+  That's normal — some reviews are genuinely hard to classify even for humans.
+
+
+--------------------------------------------------------------------------------
+STEP 7 — Putting It All Together (main.py)
+--------------------------------------------------------------------------------
+The final step was connecting all the pieces into one program that's easy
+to use from the command line (the text-based terminal window).
+
+I set it up so you can:
+
+  Run full training:
+    python main.py
+    (downloads data, trains the model, prints results, saves the model)
+
+  Run a quick test with fewer reviews (faster):
+    python main.py --max-train 2000
+
+  Use a different learning algorithm:
+    python main.py --clf svm
+
+  Classify a single new review without retraining:
+    python main.py --predict "This was the best film I've seen all year!"
+
+The trained model gets saved to a file called model.pkl. pkl is short for
+"pickle" — a way Python has of saving a program's internal state to a file
+so it can be loaded back later without starting from scratch.
+
+
+--------------------------------------------------------------------------------
+BUGS I HIT ALONG THE WAY
+--------------------------------------------------------------------------------
+Nothing works perfectly the first time. Here's what went wrong and how I
+fixed it:
+
+  Problem 1: The dataset wasn't found
+    When I first tried to download the IMDB dataset, the program crashed
+    because the name I used ("imdb") was outdated. The dataset had been
+    moved to a new location on the HuggingFace website and renamed to
+    "stanfordnlp/imdb".
+    Fix: updated the name in the code to the new correct one.
+
+  Problem 2: The program crashed because it only saw one type of review
+    When I tested with only 2,000 reviews (to save time), the program
+    crashed because all 2,000 happened to be negative reviews. The learning
+    algorithm needs to see examples of BOTH types to learn the difference.
+    Fix: wrote the balancing helper described in Step 3.
+
+  Problem 3: A small warning about an outdated setting
+    One setting I used (n_jobs=-1) turned out to be deprecated, meaning
+    the library's developers had removed support for it in a recent update.
+    Fix: simply removed that setting since it wasn't doing anything useful.
+
+
+--------------------------------------------------------------------------------
+FINAL RESULT
+--------------------------------------------------------------------------------
+I built a program that:
+
+  1. Downloads 50,000 real IMDB movie reviews automatically
+  2. Cleans up the messy text
+  3. Converts every review into a pattern of numbers using TF-IDF
+  4. Trains a Logistic Regression model to learn which patterns mean
+     positive and which mean negative
+  5. Achieves 90.32% accuracy on reviews it has never seen before
+  6. Can classify any new review you type in, in under a second
+
+All of this without any neural network or AI — just careful maths on
+word frequencies. The fact that it reaches 90% accuracy this way shows
+how much information is packed into the words people choose to use.
+
+The one thing it still struggles with is sarcasm. A review like:
+  "Oh wow, truly a MASTERPIECE of bad filmmaking."
+...would likely be classified as POSITIVE because of the word "masterpiece",
+even though the reviewer clearly hated it. That kind of nuance requires
+much more advanced techniques.
+
+--------------------------------------------------------------------------------
+COMMANDS TO RUN THE PROJECT
+--------------------------------------------------------------------------------
+All of these are typed into the terminal inside VS Code.
+The first thing you should always do is navigate to the project folder:
+
+  cd "C:\Users\rokin\OneDrive\Documents\sentiment-project"
+
+After running that, you don't need to type the full path for the other commands.
+
+---
+
+Install the required tools (only needs to be done once):
+
+  pip install -r "C:\Users\rokin\OneDrive\Documents\sentiment-project\requirements.txt"
+
+---
+
+Test that the data loading works (downloads 150 reviews as a quick check):
+
+  python -c "from src.data import load_imdb; load_imdb(max_train=100, max_test=50)"
+
+---
+
+Test that the model builds without errors:
+
+  python -c "from src.model import build_pipeline; p = build_pipeline(); print(p)"
+
+---
+
+Test that the results reporting works using made up numbers:
+
+  python -c "from src.evaluate import print_report; print_report([0,1,0,1], [0,1,1,1])"
+
+---
+
+Quick test run on a small number of reviews (finishes in seconds):
+
+  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --max-train 2000 --max-test 500
+
+---
+
+Full training run on all 50,000 reviews (takes a few minutes):
+
+  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py"
+
+---
+
+Test your own review after training (replace the text inside the quotes with your own):
+
+  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --predict "type your review here"
+
+---
+
+Run using the alternative brain (SVM) instead of the default one:
+
+  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --clf svm
+
+---
+
+---
+
+See the statistics from the saved model without retraining (instant):
+
+  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --stats
+
+See the statistics on a smaller number of reviews (even faster):
+
+  python "C:\Users\rokin\OneDrive\Documents\sentiment-project\main.py" --stats --max-test 500
+
+The statistics it shows are:
+  - Accuracy        : the percentage of reviews it got right overall
+  - Precision       : when it says positive, how often it actually is
+  - Recall          : of all the real positives, how many it caught
+  - Confusion Matrix: a table showing correct vs incorrect predictions
+  - Top words       : the words that pushed hardest toward positive or negative
+
+---
+
+NOTE: Once you have run the cd command at the top, you can shorten
+the main.py commands to just:
+
+  python main.py
+  python main.py --predict "type your review here"
+  python main.py --clf svm
+  python main.py --stats
+  python main.py --stats --max-test 500
+
+================================================================================
+  END OF LOG
+================================================================================
